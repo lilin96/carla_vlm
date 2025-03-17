@@ -3,7 +3,9 @@ from torchvision import transforms
 
 import numpy as np
 import gym
+import cv2
 
+from carla_env.tools.images_stitching import custom_image
 from carla_env.wrappers import vector, get_displacement_vector
 
 torch.cuda.empty_cache()
@@ -34,7 +36,8 @@ def create_encode_state_fn(measurements_to_include, CONFIG, vae=None):
                      "end_wp_vector" in measurements_to_include,
                      "end_wp_fixed" in measurements_to_include,
                      "distance_goal" in measurements_to_include,
-                     "multi_view_camera" in measurements_to_include,]
+                     "multi_view_camera" in measurements_to_include,
+                     ]
 
     def create_observation_space():
         observation_space = {}
@@ -57,13 +60,7 @@ def create_encode_state_fn(measurements_to_include, CONFIG, vae=None):
         if measure_flags[10]: observation_space['distance_goal'] = gym.spaces.Box(low=0, high=1500, shape=(1, 1), dtype=np.float32)
 
         if measure_flags[11]:
-            observation_space["front_camera"] = gym.spaces.Box(low=0, high=255, shape=(300, 400, 3), dtype=np.uint8)
-            observation_space["front_left_camera"] = gym.spaces.Box(low=0, high=255, shape=(300, 400, 3), dtype=np.uint8)
-            observation_space["front_right_camera"] = gym.spaces.Box(low=0, high=255, shape=(300, 400, 3), dtype=np.uint8)
-            observation_space["back_camera"] = gym.spaces.Box(low=0, high=255, shape=(300, 400, 3), dtype=np.uint8)
-            observation_space["back_left_camera"] = gym.spaces.Box(low=0, high=255, shape=(300, 400, 3), dtype=np.uint8)
-            observation_space["back_right_camera"] = gym.spaces.Box(low=0, high=255, shape=(300, 400, 3), dtype=np.uint8)
-
+            observation_space["multi_view_images"] = gym.spaces.Box(low=0, high=255, shape=(448*2, 448*6, 3), dtype=np.uint8)
 
         if CONFIG.use_seg_bev: observation_space['seg_camera'] = gym.spaces.Box(low=0, high=255, shape=(192, 192, 6), dtype=np.uint8)
 
@@ -113,12 +110,18 @@ def create_encode_state_fn(measurements_to_include, CONFIG, vae=None):
             encoded_state['distance_goal'] = [[len(env.route_waypoints) - env.current_waypoint_index]]
 
         if measure_flags[11]:
-            encoded_state["front_camera"] = env.multi_view_images[0]
-            encoded_state["front_left_camera"] = env.multi_view_images[1]
-            encoded_state["front_right_camera"] = env.multi_view_images[2]
-            encoded_state["back_camera"] = env.multi_view_images[3]
-            encoded_state["back_left_camera"] = env.multi_view_images[4]
-            encoded_state["back_right_camera"] = env.multi_view_images[5]
+            captions = ['cam_front_left', 'cam_front', 'cam_front_right', 'cam_back_left', 'cam_back', 'cam_back_right']
+            obs_multi_view = {
+                captions[0]: [ cv2.cvtColor(env.multi_view_images[0], cv2.COLOR_BGR2RGB)],
+                captions[1]: [cv2.cvtColor(env.multi_view_images[1], cv2.COLOR_BGR2RGB)],
+                captions[2]: [cv2.cvtColor(env.multi_view_images[2], cv2.COLOR_BGR2RGB)],
+                captions[3]: [cv2.cvtColor(env.multi_view_images[3], cv2.COLOR_BGR2RGB)],
+                captions[4]: [cv2.cvtColor(env.multi_view_images[4], cv2.COLOR_BGR2RGB)],
+                captions[5]: [cv2.cvtColor(env.multi_view_images[5], cv2.COLOR_BGR2RGB)],
+            }
+            obs_combined = custom_image(obs_multi_view)
+            encoded_state["multi_view_images"] = np.array(obs_combined)
+
 
         return encoded_state
 

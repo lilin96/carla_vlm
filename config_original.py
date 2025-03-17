@@ -9,43 +9,7 @@ from stable_baselines3.common.preprocessing import get_flattened_obs_dim
 import torch.nn as nn
 import gymnasium as gym
 import torch
-from torchvision.transforms import ToPILImage
 
-from carla_env.tools.image_preprossing import load_image
-from transformers import AutoModel, AutoTokenizer
-# from internvl_chat.internvl.model import load_model_and_tokenizer
-
-to_pil = ToPILImage()
-
-class CustomInternvl(nn.Module):
-    def __init__(self):
-        super(CustomInternvl, self).__init__()
-        self.question = "<image>\nwhat should the ego vehicle do next? from available action: accelerate, decelerate, turn left, turn right, idle"
-        self.generation_config = dict(max_new_tokens=1024, do_sample=True)
-        self.checkpoint = '/home/lin/proj/VLM-RL/internvl_chat/pretrained/InternVL2_5-1B'
-        self.load_model()
-
-        self.adaptive_pool = nn.AdaptiveAvgPool1d(1)
-
-    def load_model(self):
-        self.model = AutoModel.from_pretrained(
-            self.checkpoint,
-            torch_dtype="auto",
-            low_cpu_mem_usage=True,
-            use_flash_attn=True,
-            trust_remote_code=True).eval().cuda()
-        self.tokenizer = AutoTokenizer.from_pretrained(self.checkpoint, trust_remote_code=True, use_fast=False)
-
-    def forward(self, img):
-        img = to_pil(img.squeeze())
-        pixel_values = load_image(img, input_size=448, max_num=12).to(torch.bfloat16).cuda()
-        # B:Batch, N: Seq_len, C: Embed_len: 1,3464, 896
-        embeddings = self.model.get_embeddings(self.tokenizer, pixel_values,
-                                               self.question, self.generation_config, history=None)
-        embeddings_transposed = embeddings.transpose(1,2)
-        embeddings_adaptive = self.adaptive_pool(embeddings_transposed)
-        embeddings_final = embeddings_adaptive.squeeze(-1)
-        return embeddings_final
 
 class CustomCNN(nn.Module):
     def __init__(self, input_shape, features_dim=1):
@@ -104,9 +68,6 @@ class CustomMultiInputExtractor(BaseFeaturesExtractor):
                 if key == "seg_camera":
                     extractors[key] = CustomCNN(subspace.shape, features_dim=features_dim)
                     total_concat_size += features_dim
-                elif key == "multi_view_images":
-                    extractors[key] =CustomInternvl()
-                    total_concat_size += 896
                 else:
                     extractors[key] = nn.Flatten()
                     total_concat_size += get_flattened_obs_dim(subspace)
@@ -139,7 +100,6 @@ algorithm_params = {
         n_epochs=10,
         n_steps=1024,
         policy_kwargs=dict(activation_fn=th.nn.ReLU,
-                         # ortho_init=False,
                            net_arch=[dict(pi=[500, 300], vf=[500, 300])],
                            features_extractor_class=CustomMultiInputExtractor,
                            features_extractor_kwargs=dict(features_dim=256),
@@ -196,7 +156,6 @@ states = {
     "4": ["steer", "throttle", "speed", "angle_next_waypoint", "maneuver", "distance_goal"],
     "5": ["steer", "throttle", "speed", "waypoints", "seg_camera"],
     "6": ["steer", "throttle", "speed", "waypoints", "seg_camera", "multi_view_camera"],
-
 }
 
 reward_params = {

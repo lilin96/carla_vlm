@@ -210,7 +210,13 @@ class CLIPRewardedPPO(PPO):
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
                     rewards[idx] += self.gamma * terminal_value
 
-            rollout_buffer.add(self._last_obs, actions, rewards, self._last_episode_starts, values, log_probs, infos)
+            rollout_buffer.add(self._last_obs,
+                               actions,
+                               rewards,
+                               self._last_episode_starts,
+                               values,
+                               log_probs,
+                               infos)
             self._last_obs = new_obs
             self._last_episode_starts = dones
 

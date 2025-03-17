@@ -120,7 +120,7 @@ class CarlaRouteEnv(gym.Env):
 
         self.carla_process = None
         if start_carla:
-            CARLA_ROOT = "/home/automan/ll/CARLA_0.9.13"
+            CARLA_ROOT = "/home/software/CARLA_0.9.13"
             carla_path = os.path.join(CARLA_ROOT, "CarlaUE4.sh")
             launch_command = [carla_path]
             launch_command += ['-quality_level=Low']
@@ -136,9 +136,11 @@ class CarlaRouteEnv(gym.Env):
 
             time.sleep(5)
 
+        self.carla_version = "0.9.13"
+
         width, height = viewer_res
-        width_mv = 400
-        height_mv = 300
+        width_mv = 120
+        height_mv = 80
         if obs_res is None:
             out_width, out_height = width, height
         else:
@@ -320,7 +322,8 @@ class CarlaRouteEnv(gym.Env):
                                   self.front_right_image_buffer,
                                   self.back_image_buffer,
                                   self.back_left_image_buffer,
-                                  self.back_right_image_buffer]
+                                  self.back_right_image_buffer
+                                  ]
 
         self.step_count = 0
 
@@ -507,7 +510,8 @@ class CarlaRouteEnv(gym.Env):
                                       self._get_front_right_image(),
                                       self._get_back_image(),
                                       self._get_back_left_image(),
-                                      self._get_back_right_image()]
+                                      self._get_back_right_image()
+                                      ]
 
         transform = self.vehicle.get_transform()
 
@@ -793,8 +797,14 @@ class CarlaRouteEnv(gym.Env):
             c_ev = abs(ev_loc.x - w.location.x) < 1.0 and abs(ev_loc.y - w.location.y) < 1.0
             return c_distance and (not c_ev)
 
-        vehicle_bbox_list = self.world.get_level_bbs(carla.CityObjectLabel.Vehicles)
-        walker_bbox_list = self.world.get_level_bbs(carla.CityObjectLabel.Pedestrians)
+        if self.carla_version == "0.9.13":
+            vehicle_bbox_list = self.world.get_level_bbs(carla.CityObjectLabel.Vehicles)
+            walker_bbox_list = self.world.get_level_bbs(carla.CityObjectLabel.Pedestrians)
+        elif self.carla_version == "0.9.15":
+            vehicle_bbox_list = self.world.get_level_bbs(carla.CityObjectLabel.Car)
+            walker_bbox_list = self.world.get_level_bbs(carla.CityObjectLabel.Pedestrians)
+
+
         if self._scale_bbox:
             vehicles = self._get_surrounding_actors(vehicle_bbox_list, is_within_distance, 1.0)
             walkers = self._get_surrounding_actors(walker_bbox_list, is_within_distance, 2.0)

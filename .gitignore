@@ -1,2 +1,4 @@
 .idea/
 __pycache__/
+internvl_chat/internvl/__pycache__/
+internvl_chat/pretrained/
