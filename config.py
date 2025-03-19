@@ -22,7 +22,7 @@ class CustomInternvl(nn.Module):
         super(CustomInternvl, self).__init__()
         self.question = "<image>\nwhat should the ego vehicle do next? from available action: accelerate, decelerate, turn left, turn right, idle"
         self.generation_config = dict(max_new_tokens=1024, do_sample=True)
-        self.checkpoint = '/home/lin/proj/VLM-RL/internvl_chat/pretrained/Mini-InternVL2-4B-DA-DriveLM'
+        self.checkpoint = '/home/lin/proj/VLM-RL/internvl_chat/pretrained/Mini-InternVL2-1B-DA-DriveLM'
         self.load_model()
 
         self.adaptive_pool = nn.AdaptiveAvgPool1d(1)
@@ -44,8 +44,12 @@ class CustomInternvl(nn.Module):
             embeddings = self.model.get_embeddings(self.tokenizer, pixel_values,
                                                    self.question, self.generation_config, history=None)
         else:
-            pixel_values = [load_image(image, input_size=448, max_num=12).cuda() for image in imgages]
+            pixel_values= []
+            for image in imgages:
+                image = to_pil(image)
+                pixel_values.append(load_image(image, input_size=448, max_num=12).cuda())
             num_patches_list = [pixel_value.size(0) for pixel_value in pixel_values]
+            pixel_values = torch.cat(pixel_values)
             questions = [self.question]*len(num_patches_list)
             embeddings = self.model.get_batch_embeddings(self.tokenizer, pixel_values, num_patches_list=num_patches_list,
                              questions=questions, generation_config=self.generation_config)
