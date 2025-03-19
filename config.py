@@ -22,7 +22,7 @@ class CustomInternvl(nn.Module):
         super(CustomInternvl, self).__init__()
         self.question = "<image>\nwhat should the ego vehicle do next? from available action: accelerate, decelerate, turn left, turn right, idle"
         self.generation_config = dict(max_new_tokens=1024, do_sample=True)
-        self.checkpoint = '/home/lin/proj/VLM-RL/internvl_chat/pretrained/InternVL2_5-1B'
+        self.checkpoint = '/home/automan/ll/pretrained/mini_internvl_4b_drivelm'
         self.load_model()
 
         self.adaptive_pool = nn.AdaptiveAvgPool1d(1)

@@ -120,7 +120,7 @@ class CarlaRouteEnv(gym.Env):
 
         self.carla_process = None
         if start_carla:
-            CARLA_ROOT = "/home/software/CARLA_0.9.13"
+            CARLA_ROOT = "/home/automan/ll/CARLA_0.9.13"
             carla_path = os.path.join(CARLA_ROOT, "CarlaUE4.sh")
             launch_command = [carla_path]
             launch_command += ['-quality_level=Low']
@@ -139,8 +139,8 @@ class CarlaRouteEnv(gym.Env):
         self.carla_version = "0.9.13"
 
         width, height = viewer_res
-        width_mv = 120
-        height_mv = 80
+        width_mv = 200
+        height_mv = 150
         if obs_res is None:
             out_width, out_height = width, height
         else:
