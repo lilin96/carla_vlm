@@ -19,6 +19,10 @@ parser.add_argument("--num_checkpoints", type=int, default=100, help="Checkpoint
 parser.add_argument("--log_dir", type=str, default="tensorboard", help="Directory to save logs")
 parser.add_argument("--device", type=str, default="cuda:0", help="cpu, cuda:0, cuda:1, cuda:2")
 parser.add_argument("--config", type=str, default="1", help="Config to use (default: vlm_rl)")
+parser.add_argument("--freeze_backbone", type=bool, default=True, help="Set to True to freeze the ViT. Default is False")
+parser.add_argument("--freeze_llm", type=bool, default=True, help="Set to True to freeze the ViT. Default is False")
+parser.add_argument("--freeze_mlp", type=bool, default=True, help="Set to True to freeze the ViT. Default is False")
+parser.add_argument("--unfreeze_lm_head", type=bool, default=False, help="Set to True to freeze the ViT. Default is False")
 
 args = vars(parser.parse_args())
 CONFIG = config.set_config(args["config"])
@@ -73,6 +77,41 @@ model_dir = os.path.join(args["log_dir"], model_name)
 new_logger = configure(model_dir, ["stdout", "csv", "tensorboard"])
 model.set_logger(new_logger)
 write_json(CONFIG, os.path.join(model_dir, 'config.json'))
+
+def _freeze_params(module):
+    for param in module.parameters():
+        param.requires_grad = False
+
+llm_model = model.policy.features_extractor.extractors["multi_view_images"].model
+if args['freeze_backbone']:
+    # model.vision_model = model.vision_model.eval()
+    _freeze_params(llm_model.vision_model)
+
+if args['freeze_llm']:
+    model.language_model = llm_model.language_model.eval()
+    _freeze_params(llm_model.language_model)
+
+if args['unfreeze_lm_head']:
+    llm_model.language_model.lm_head.requires_grad = True
+
+if args['freeze_mlp']:
+    _freeze_params(llm_model.mlp1)
+
+# if args.use_backbone_lora:
+#     model.wrap_backbone_lora(r=model_args.use_backbone_lora, lora_alpha=2 * model_args.use_backbone_lora)
+#     model.config.use_backbone_lora = model_args.use_backbone_lora
+#
+# if args.use_llm_lora:
+#     model.wrap_llm_lora(r=model_args.use_llm_lora, lora_alpha=2 * model_args.use_llm_lora)
+#     model.config.use_llm_lora = model_args.use_llm_lora
+
+# if model_args.unfreeze_vit_layers != 0:
+#     layers = model.vision_model.encoder.layers[model_args.unfreeze_vit_layers:]
+#     for k, v in layers.named_parameters():
+#         logger.info(f'Unfreezing ViT layer: {k}')
+#         v.requires_grad = True
+
+
 
 model.learn(total_timesteps=args["total_timesteps"],
             callback=[HParamCallback(CONFIG), TensorboardCallback(1), CheckpointCallback(
