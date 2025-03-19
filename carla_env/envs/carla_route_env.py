@@ -139,8 +139,8 @@ class CarlaRouteEnv(gym.Env):
         self.carla_version = "0.9.13"
 
         width, height = viewer_res
-        width_mv = 120
-        height_mv = 80
+        width_mv = 200
+        height_mv = 150
         if obs_res is None:
             out_width, out_height = width, height
         else:
